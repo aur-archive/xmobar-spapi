@@ -1,0 +1,87 @@
+From 87df78fd269170cd338b5ed6129edc345c76f53e Mon Sep 17 00:00:00 2001
+From: Matthias Dietrich <matze_holz@web.de>
+Date: Sun, 11 May 2014 11:32:37 +0200
+Subject: [PATCH] added SpaceApi for 0.20.1
+
+---
+ xmobar-0.20.1/src/Config.hs                 |  3 +-
+ xmobar-0.20.1/src/Plugins/SpaceApiWriter.hs | 46 +++++++++++++++++++++++++++++
+ 2 files changed, 48 insertions(+), 1 deletion(-)
+ create mode 100644 xmobar-0.20.1/src/Plugins/SpaceApiWriter.hs
+
+diff --git a/xmobar-0.20.1/src/Config.hs b/xmobar-0.20.1/src/Config.hs
+index ed3e51a..78c0b10 100644
+--- a/xmobar-0.20.1/src/Config.hs
++++ b/xmobar-0.20.1/src/Config.hs
+@@ -36,6 +36,7 @@ import Plugins.XMonadLog
+ import Plugins.EWMH
+ import Plugins.Kbd
+ import Plugins.Locks
++import Plugins.SpaceApiWriter
+ 
+ import Plugins.Mail
+ import Plugins.MBox
+@@ -135,7 +136,7 @@ infixr :*:
+ -- the plugin's type to the list of types (separated by ':*:') appearing in
+ -- this function's type signature.
+ runnableTypes :: Command :*: Monitors :*: Date :*: PipeReader :*: BufferedPipeReader :*: CommandReader :*: StdinReader :*: XMonadLog :*: EWMH :*: Kbd :*: Locks :*:
+-                 Mail :*: MBox :*:
++                 Mail :*: MBox :*: SpaceApiWriter :*:
+                  DateZone :*:
+                  ()
+ runnableTypes = undefined
+diff --git a/xmobar-0.20.1/src/Plugins/SpaceApiWriter.hs b/xmobar-0.20.1/src/Plugins/SpaceApiWriter.hs
+new file mode 100644
+index 0000000..a140450
+--- /dev/null
++++ b/xmobar-0.20.1/src/Plugins/SpaceApiWriter.hs
+@@ -0,0 +1,46 @@
++{-# LANGUAGE OverloadedStrings #-}
++-----------------------------------------------------------------------------
++-- |
++-- Module      :  Plugins.SpaceAPIWriter
++-- Copyright   :  (c) Matthias Dietrich
++-- License     :  GPLv3
++--
++-- Maintainer  :  Matthias Dietrich <matthias.dietrich@wood-it.de>
++-- Stability   :  unstable
++-- Portability :  unportable
++--
++-- A DBus-Service, which writes the state of Hackspaces to XMobar
++--
++-----------------------------------------------------------------------------
++
++module Plugins.SpaceApiWriter where
++
++import Plugins
++import DBus
++import DBus.Client
++
++data SpaceApiWriter = SpaceApiWriter String Int
++    deriving (Read, Show)
++
++instance Exec SpaceApiWriter where
++    alias (SpaceApiWriter a _) = a
++    rate  (SpaceApiWriter _ r) = r
++    run   (SpaceApiWriter _ _) = do
++        client <- connectSession
++
++        -- Request a list of connected clients from the bus
++        reply <- call_ client (methodCall "/org/woodIT/spaceAPI" "org.woodIT.spaceAPIDaemon.viewer" "getApiStringColor")
++            { methodCallDestination = Just "org.woodIT.spaceAPI"
++            }
++	disconnect client
++
++        return (unwrapFirst reply)
++  
++-- Gives the first return value of a function called over DBus
++unwrapFirst :: IsVariant a => MethodReturn -> a
++unwrapFirst ret = unwrapped
++  where Just unwrapped = fromVariant $ head $ methodReturnBody ret
++        
++                        
++
++        
+-- 
+1.9.2
+
